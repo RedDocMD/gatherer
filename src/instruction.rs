@@ -100,7 +100,7 @@ impl TryFrom<&str> for Instruction {
             }),
             "br" => Ok(Instruction::Br {
                 rs: register_from_str(rest)
-                    .ok_or(AssemblerError::UnknownRegister(String::from(rest)))?,
+                    .ok_or_else(|| AssemblerError::UnknownRegister(String::from(rest)))?,
             }),
             "bcy" => Ok(Instruction::Bcy {
                 label: RelLabel::from(rest.trim()),
@@ -134,7 +134,7 @@ fn parse_two_registers(rest: &str) -> AssemblerResult<(u8, u8)> {
     for reg_str in regs_str {
         regs.push(
             register_from_str(reg_str)
-                .ok_or(AssemblerError::UnknownRegister(String::from(reg_str)))?,
+                .ok_or_else(|| AssemblerError::UnknownRegister(String::from(reg_str)))?,
         );
     }
     Ok((regs[0], regs[1]))
@@ -146,7 +146,7 @@ fn parse_register_and_value<T: Num>(rest: &str) -> AssemblerResult<(u8, T)> {
         return Err(AssemblerError::InvalidNoOfArgs(2, things_str.len()));
     }
     let reg = register_from_str(things_str[0])
-        .ok_or(AssemblerError::UnknownRegister(String::from(things_str[0])))?;
+        .ok_or_else(|| AssemblerError::UnknownRegister(String::from(things_str[0])))?;
     let (radix, num_str) = parse_radix(things_str[1]);
     let val = T::from_str_radix(num_str, radix)
         .map_err(|_| AssemblerError::InvalidNumber(String::from(num_str)))?;
@@ -173,14 +173,14 @@ fn parse_mem_access(rest: &str) -> AssemblerResult<(u8, u16, u8)> {
     }
     let caps = RE
         .captures(rest)
-        .ok_or(AssemblerError::InvalidInstruction(String::from(rest)))?;
+        .ok_or_else(|| AssemblerError::InvalidInstruction(String::from(rest)))?;
     let rt = register_from_str(&caps[1])
-        .ok_or(AssemblerError::UnknownRegister(String::from(&caps[1])))?;
+        .ok_or_else(|| AssemblerError::UnknownRegister(String::from(&caps[1])))?;
     let (radix, num_str) = parse_radix(&caps[2]);
     let imm = u16::from_str_radix(num_str, radix)
         .map_err(|_| AssemblerError::InvalidNumber(String::from(num_str)))?;
     let rs = register_from_str(&caps[3])
-        .ok_or(AssemblerError::UnknownRegister(String::from(&caps[3])))?;
+        .ok_or_else(|| AssemblerError::UnknownRegister(String::from(&caps[3])))?;
     Ok((rt, imm, rs))
 }
 
@@ -190,7 +190,7 @@ fn parse_reg_label(rest: &str) -> AssemblerResult<(u8, RelLabel)> {
         return Err(AssemblerError::InvalidNoOfArgs(2, things_str.len()));
     }
     let reg = register_from_str(things_str[0])
-        .ok_or(AssemblerError::UnknownRegister(String::from(things_str[0])))?;
+        .ok_or_else(|| AssemblerError::UnknownRegister(String::from(things_str[0])))?;
     let label = RelLabel::from(things_str[1]);
     Ok((reg, label))
 }
