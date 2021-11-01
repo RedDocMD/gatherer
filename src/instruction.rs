@@ -1,4 +1,6 @@
+use lazy_static::lazy_static;
 use num_traits::Num;
+use regex::Regex;
 
 use crate::error::{AssemblerError, Result as AssemblerResult};
 
@@ -33,44 +35,64 @@ impl TryFrom<&str> for Instruction {
 
     fn try_from(instr: &str) -> Result<Self, Self::Error> {
         let (comm, rest) = extract_command(instr).ok_or(AssemblerError::OpcodeMissing)?;
-        if comm == "add" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Add { rs, rt })
-        } else if comm == "comp" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Comp { rs, rt })
-        } else if comm == "addi" {
-            let (rs, imm) = parse_register_and_value::<u16>(rest)?;
-            Ok(Instruction::AddImm { rs, imm })
-        } else if comm == "compi" {
-            let (rs, imm) = parse_register_and_value::<u16>(rest)?;
-            Ok(Instruction::CompImm { rs, imm })
-        } else if comm == "and" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::And { rs, rt })
-        } else if comm == "xor" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Xor { rs, rt })
-        } else if comm == "sll" {
-            let (rs, sh) = parse_register_and_value::<u8>(rest)?;
-            Ok(Instruction::Sll { rs, sh })
-        } else if comm == "srl" {
-            let (rs, sh) = parse_register_and_value::<u8>(rest)?;
-            Ok(Instruction::Srl { rs, sh })
-        } else if comm == "sra" {
-            let (rs, sh) = parse_register_and_value::<u8>(rest)?;
-            Ok(Instruction::Sra { rs, sh })
-        } else if comm == "sllv" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Sllv { rs, rt })
-        } else if comm == "srlv" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Srlv { rs, rt })
-        } else if comm == "srav" {
-            let (rs, rt) = parse_two_registers(rest)?;
-            Ok(Instruction::Srav { rs, rt })
-        } else {
-            Err(AssemblerError::UnknownInstruction(String::from(comm)))
+        match comm {
+            "add" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Add { rs, rt })
+            }
+            "comp" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Comp { rs, rt })
+            }
+            "addi" => {
+                let (rs, imm) = parse_register_and_value::<u16>(rest)?;
+                Ok(Instruction::AddImm { rs, imm })
+            }
+            "compi" => {
+                let (rs, imm) = parse_register_and_value::<u16>(rest)?;
+                Ok(Instruction::CompImm { rs, imm })
+            }
+            "and" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::And { rs, rt })
+            }
+            "xor" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Xor { rs, rt })
+            }
+            "sll" => {
+                let (rs, sh) = parse_register_and_value::<u8>(rest)?;
+                Ok(Instruction::Sll { rs, sh })
+            }
+            "srl" => {
+                let (rs, sh) = parse_register_and_value::<u8>(rest)?;
+                Ok(Instruction::Srl { rs, sh })
+            }
+            "sra" => {
+                let (rs, sh) = parse_register_and_value::<u8>(rest)?;
+                Ok(Instruction::Sra { rs, sh })
+            }
+            "sllv" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Sllv { rs, rt })
+            }
+            "srlv" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Srlv { rs, rt })
+            }
+            "srav" => {
+                let (rs, rt) = parse_two_registers(rest)?;
+                Ok(Instruction::Srav { rs, rt })
+            }
+            "lw" => {
+                let (rt, imm, rs) = parse_mem_access(rest)?;
+                Ok(Instruction::Lw { rt, imm, rs })
+            }
+            "sw" => {
+                let (rt, imm, rs) = parse_mem_access(rest)?;
+                Ok(Instruction::Sw { rt, imm, rs })
+            }
+            _ => Err(AssemblerError::UnknownInstruction(String::from(comm))),
         }
     }
 }
@@ -114,6 +136,24 @@ fn parse_radix(num: &str) -> (u32, &str) {
             _ => (10, num),
         }
     }
+}
+
+fn parse_mem_access(rest: &str) -> AssemblerResult<(u8, u16, u8)> {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"(\$[a-z0-9]{2}) *, *([^(]+)\((\$[a-z0-9]{2})\)").unwrap();
+    }
+    let caps = RE
+        .captures(rest)
+        .ok_or(AssemblerError::InvalidInstruction(String::from(rest)))?;
+    let rt = register_from_str(&caps[1])
+        .ok_or(AssemblerError::UnknownRegister(String::from(&caps[1])))?;
+    let (radix, num_str) = parse_radix(&caps[2]);
+    let imm = u16::from_str_radix(num_str, radix)
+        .map_err(|_| AssemblerError::InvalidNumber(String::from(num_str)))?;
+    let rs = register_from_str(&caps[3])
+        .ok_or(AssemblerError::UnknownRegister(String::from(&caps[3])))?;
+    Ok((rt, imm, rs))
 }
 
 fn register_from_str(reg: &str) -> Option<u8> {
@@ -192,7 +232,7 @@ mod test {
 
     #[test]
     fn test_reg_instr() {
-        let instr = "add $t2, $a0";
+        let instr = "add $t2   ,     $a0";
         let parsed_instr = Instruction::try_from(instr);
         assert!(parsed_instr.is_ok());
         assert_eq!(parsed_instr.unwrap(), Instruction::Add { rs: 10, rt: 4 });
@@ -200,7 +240,7 @@ mod test {
 
     #[test]
     fn test_imm_instr() {
-        let instr = "compi $t2, 0x20";
+        let instr = "compi $t2   ,  0x20";
         let parsed_instr = Instruction::try_from(instr);
         assert!(parsed_instr.is_ok());
         assert_eq!(
@@ -211,9 +251,35 @@ mod test {
 
     #[test]
     fn test_shamt_instr() {
-        let instr = "sll $t2, 3";
+        let instr = "sll $t2  ,   3";
         let parsed_instr = Instruction::try_from(instr);
         assert!(parsed_instr.is_ok());
         assert_eq!(parsed_instr.unwrap(), Instruction::Sll { rs: 10, sh: 3 });
+    }
+
+    #[test]
+    fn test_mem_instr() {
+        let load = "lw $t1,  16($t2)";
+        let load_instr = Instruction::try_from(load);
+        assert!(load_instr.is_ok());
+        assert_eq!(
+            load_instr.unwrap(),
+            Instruction::Lw {
+                rt: 9,
+                imm: 16,
+                rs: 10
+            }
+        );
+        let store = "sw $t1  ,  16($t2)";
+        let store_instr = Instruction::try_from(store);
+        assert!(store_instr.is_ok());
+        assert_eq!(
+            store_instr.unwrap(),
+            Instruction::Sw {
+                rt: 9,
+                imm: 16,
+                rs: 10
+            }
+        );
     }
 }

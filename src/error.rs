@@ -13,6 +13,8 @@ pub enum AssemblerError {
     UnknownRegister(String),
     #[error("failed to parse number `{0}`")]
     InvalidNumber(String),
+    #[error("invalid instruction format `{0}`")]
+    InvalidInstruction(String),
 }
 
 pub type Result<T> = StdResult<T, AssemblerError>;
