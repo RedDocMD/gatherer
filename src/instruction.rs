@@ -21,13 +21,13 @@ pub enum Instruction {
     Lw { rt: u8, imm: u16, rs: u8 },
     Sw { rt: u8, imm: u16, rs: u8 },
     B { label: AbsLabel },
+    Bl { label: AbsLabel },
     Br { rs: u8 },
+    Bcy { label: RelLabel },
+    Bncy { label: RelLabel },
     Bltz { rs: u8, label: RelLabel },
     Bz { rs: u8, label: RelLabel },
     Bnz { rs: u8, label: RelLabel },
-    Bl { label: AbsLabel },
-    Bcy { label: RelLabel },
-    Bncy { label: RelLabel },
 }
 
 impl TryFrom<&str> for Instruction {
@@ -91,6 +91,34 @@ impl TryFrom<&str> for Instruction {
             "sw" => {
                 let (rt, imm, rs) = parse_mem_access(rest)?;
                 Ok(Instruction::Sw { rt, imm, rs })
+            }
+            "b" => Ok(Instruction::B {
+                label: AbsLabel::from(rest.trim()),
+            }),
+            "bl" => Ok(Instruction::Bl {
+                label: AbsLabel::from(rest.trim()),
+            }),
+            "br" => Ok(Instruction::Br {
+                rs: register_from_str(rest)
+                    .ok_or(AssemblerError::UnknownRegister(String::from(rest)))?,
+            }),
+            "bcy" => Ok(Instruction::Bcy {
+                label: RelLabel::from(rest.trim()),
+            }),
+            "bncy" => Ok(Instruction::Bncy {
+                label: RelLabel::from(rest.trim()),
+            }),
+            "bltz" => {
+                let (rs, label) = parse_reg_label(rest)?;
+                Ok(Instruction::Bltz { rs, label })
+            }
+            "bz" => {
+                let (rs, label) = parse_reg_label(rest)?;
+                Ok(Instruction::Bz { rs, label })
+            }
+            "bnz" => {
+                let (rs, label) = parse_reg_label(rest)?;
+                Ok(Instruction::Bnz { rs, label })
             }
             _ => Err(AssemblerError::UnknownInstruction(String::from(comm))),
         }
@@ -156,6 +184,17 @@ fn parse_mem_access(rest: &str) -> AssemblerResult<(u8, u16, u8)> {
     Ok((rt, imm, rs))
 }
 
+fn parse_reg_label(rest: &str) -> AssemblerResult<(u8, RelLabel)> {
+    let things_str: Vec<_> = rest.split(',').map(|x| x.trim()).collect();
+    if things_str.len() != 2 {
+        return Err(AssemblerError::InvalidNoOfArgs(2, things_str.len()));
+    }
+    let reg = register_from_str(things_str[0])
+        .ok_or(AssemblerError::UnknownRegister(String::from(things_str[0])))?;
+    let label = RelLabel::from(things_str[1]);
+    Ok((reg, label))
+}
+
 fn register_from_str(reg: &str) -> Option<u8> {
     match reg {
         "$zero" => Some(0),
@@ -208,9 +247,12 @@ pub struct AbsLabel {
     addr: Option<u32>,
 }
 
-impl AbsLabel {
-    fn new(name: String) -> Self {
-        Self { name, addr: None }
+impl From<&str> for AbsLabel {
+    fn from(s: &str) -> Self {
+        Self {
+            name: String::from(s),
+            addr: None,
+        }
     }
 }
 
@@ -220,9 +262,12 @@ pub struct RelLabel {
     addr: Option<u16>,
 }
 
-impl RelLabel {
-    fn new(name: String) -> Self {
-        Self { name, addr: None }
+impl From<&str> for RelLabel {
+    fn from(s: &str) -> Self {
+        Self {
+            name: String::from(s),
+            addr: None,
+        }
     }
 }
 
@@ -279,6 +324,35 @@ mod test {
                 rt: 9,
                 imm: 16,
                 rs: 10
+            }
+        );
+    }
+
+    #[test]
+    fn test_branch() {
+        let abs_jmp = "b Hell";
+        let abs_jmp_instr = Instruction::try_from(abs_jmp);
+        assert!(abs_jmp_instr.is_ok());
+        assert_eq!(
+            abs_jmp_instr.unwrap(),
+            Instruction::B {
+                label: AbsLabel {
+                    name: String::from("Hell"),
+                    addr: None
+                }
+            }
+        );
+        let cond_jmp = "bltz $s0, Else1";
+        let cond_jmp_instr = Instruction::try_from(cond_jmp);
+        assert!(cond_jmp_instr.is_ok());
+        assert_eq!(
+            cond_jmp_instr.unwrap(),
+            Instruction::Bltz {
+                rs: 16,
+                label: RelLabel {
+                    name: String::from("Else1"),
+                    addr: None
+                }
             }
         );
     }
