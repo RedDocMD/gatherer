@@ -30,6 +30,35 @@ pub enum Instruction {
     Bnz { rs: u8, label: RelLabel },
 }
 
+impl Instruction {
+    fn opcode(&self) -> u8 {
+        match self {
+            Self::Add { .. } => 0,
+            Self::Comp { .. } => 1,
+            Self::AddImm { .. } => 2,
+            Self::CompImm { .. } => 3,
+            Self::And { .. } => 4,
+            Self::Xor { .. } => 5,
+            Self::Sll { .. } => 6,
+            Self::Srl { .. } => 7,
+            Self::Sra { .. } => 8,
+            Self::Sllv { .. } => 9,
+            Self::Srlv { .. } => 10,
+            Self::Srav { .. } => 11,
+            Self::Lw { .. } => 12,
+            Self::Sw { .. } => 13,
+            Self::B { .. } => 14,
+            Self::Bl { .. } => 15,
+            Self::Br { .. } => 16,
+            Self::Bcy { .. } => 17,
+            Self::Bncy { .. } => 18,
+            Self::Bltz { .. } => 19,
+            Self::Bz { .. } => 20,
+            Self::Bnz { .. } => 21,
+        }
+    }
+}
+
 impl TryFrom<&str> for Instruction {
     type Error = AssemblerError;
 
