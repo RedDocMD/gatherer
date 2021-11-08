@@ -1,4 +1,4 @@
-use std::result::Result as StdResult;
+use std::{io, result::Result as StdResult};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -17,6 +17,8 @@ pub enum AssemblerError {
     InvalidInstruction(String),
     #[error("no address attached to label `{0}`")]
     FloatingLabel(String),
+    #[error("io error: {0}")]
+    IOError(#[from] io::Error),
 }
 
 pub type Result<T> = StdResult<T, AssemblerError>;
