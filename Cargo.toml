@@ -11,3 +11,4 @@ thiserror = "1"
 num-traits = "0.2"
 lazy_static = "1.4"
 regex = { version = "1", default-features = false, features = ["std", "perf"] }
+colored = "2"

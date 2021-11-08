@@ -1,3 +1,4 @@
+use colored::*;
 use num_traits::Num;
 use regex::Regex;
 
@@ -57,6 +58,33 @@ impl Instruction {
         }
     }
 
+    fn opname(&self) -> &'static str {
+        match self {
+            Self::Add { .. } => "add",
+            Self::Comp { .. } => "comp",
+            Self::AddImm { .. } => "addi",
+            Self::CompImm { .. } => "compi",
+            Self::And { .. } => "and",
+            Self::Xor { .. } => "xor",
+            Self::Sll { .. } => "sll",
+            Self::Srl { .. } => "srl",
+            Self::Sra { .. } => "sra",
+            Self::Sllv { .. } => "sllv",
+            Self::Srlv { .. } => "srlv",
+            Self::Srav { .. } => "srav",
+            Self::Lw { .. } => "lw",
+            Self::Sw { .. } => "sw",
+            Self::B { .. } => "b",
+            Self::Bl { .. } => "bl",
+            Self::Br { .. } => "br",
+            Self::Bcy { .. } => "bcy",
+            Self::Bncy { .. } => "bncy",
+            Self::Bltz { .. } => "bltz",
+            Self::Bz { .. } => "bz",
+            Self::Bnz { .. } => "bnz",
+        }
+    }
+
     pub fn encode(&self) -> AssemblerResult<u32> {
         let opcode = self.opcode();
         match self {
@@ -96,6 +124,54 @@ impl Instruction {
                 Some(addr) => Ok(encode_itype(opcode, *rs, 0, addr)),
                 None => Err(AssemblerError::FloatingLabel(label.name.clone())),
             },
+        }
+    }
+
+    pub fn has_abs_label(&self) -> bool {
+        use Instruction::*;
+        match self {
+            B { .. } | Bl { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_rel_label(&self) -> bool {
+        use Instruction::*;
+        match self {
+            Bcy { .. } | Bncy { .. } | Bltz { .. } | Bz { .. } | Bnz { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn set_abs_addr(&mut self, addr: u32) {
+        use Instruction::*;
+        match self {
+            B { label, .. } | Bl { label, .. } => label.addr = Some(addr),
+            _ => {
+                eprintln!(
+                    "{} {}",
+                    "attempting to set absolute address on".yellow(),
+                    self.opname().yellow()
+                );
+            }
+        }
+    }
+
+    pub fn set_rel_addr(&mut self, addr: u16) {
+        use Instruction::*;
+        match self {
+            Bcy { label, .. }
+            | Bncy { label, .. }
+            | Bltz { label, .. }
+            | Bz { label, .. }
+            | Bnz { label, .. } => label.addr = Some(addr),
+            _ => {
+                eprintln!(
+                    "{} {}",
+                    "attempting to set relative address on".yellow(),
+                    self.opname().yellow()
+                );
+            }
         }
     }
 }
