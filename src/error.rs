@@ -15,6 +15,8 @@ pub enum AssemblerError {
     InvalidNumber(String),
     #[error("invalid instruction format `{0}`")]
     InvalidInstruction(String),
+    #[error("no address attached to label `{0}`")]
+    FloatingLabel(String),
 }
 
 pub type Result<T> = StdResult<T, AssemblerError>;

@@ -57,6 +57,64 @@ impl Instruction {
             Self::Bnz { .. } => 18,
         }
     }
+
+    pub fn encode(&self) -> AssemblerResult<u32> {
+        let opcode = self.opcode();
+        match self {
+            Instruction::Add { rs, rt }
+            | Instruction::Comp { rs, rt }
+            | Instruction::And { rs, rt }
+            | Instruction::Xor { rs, rt }
+            | Instruction::Sllv { rs, rt }
+            | Instruction::Srlv { rs, rt }
+            | Instruction::Srav { rs, rt } => Ok(encode_itype(opcode, *rs, *rt, 0)),
+
+            Instruction::AddImm { rs, imm } | Instruction::CompImm { rs, imm } => {
+                Ok(encode_itype(opcode, *rs, 0, *imm))
+            }
+
+            Instruction::Sll { rs, sh }
+            | Instruction::Srl { rs, sh }
+            | Instruction::Sra { rs, sh } => Ok(encode_itype(opcode, *rs, *sh, 0)),
+
+            Instruction::Lw { rt, imm, rs } | Instruction::Sw { rt, imm, rs } => {
+                Ok(encode_itype(opcode, *rs, *rt, *imm))
+            }
+
+            Instruction::B { label } | Instruction::Bl { label } => match label.addr {
+                Some(addr) => Ok(encode_jtype(opcode, addr)),
+                None => Err(AssemblerError::FloatingLabel(label.name.clone())),
+            },
+            Instruction::Bcy { label } | Instruction::Bncy { label } => match label.addr {
+                Some(addr) => Ok(encode_itype(opcode, 0, 0, addr)),
+                None => Err(AssemblerError::FloatingLabel(label.name.clone())),
+            },
+
+            Instruction::Br { rs } => Ok(encode_itype(opcode, *rs, 0, 0)),
+            Instruction::Bltz { rs, label }
+            | Instruction::Bz { rs, label }
+            | Instruction::Bnz { rs, label } => match label.addr {
+                Some(addr) => Ok(encode_itype(opcode, *rs, 0, addr)),
+                None => Err(AssemblerError::FloatingLabel(label.name.clone())),
+            },
+        }
+    }
+}
+
+fn encode_itype(opcode: u8, rs: u8, rt: u8, imm: u16) -> u32 {
+    let mut instr = 0_u32;
+    instr |= (opcode as u32) << 26;
+    instr |= (rs as u32) << 21;
+    instr |= (rt as u32) << 15;
+    instr |= imm as u32;
+    instr
+}
+
+fn encode_jtype(opcode: u8, addr: u32) -> u32 {
+    let mut instr = 0_32;
+    instr |= (opcode as u32) << 26;
+    instr |= addr;
+    instr
 }
 
 impl TryFrom<&str> for Instruction {
