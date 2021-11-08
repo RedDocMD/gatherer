@@ -186,7 +186,7 @@ fn encode_itype(opcode: u8, rs: u8, rt: u8, imm: u16) -> u32 {
 }
 
 fn encode_jtype(opcode: u8, addr: u32) -> u32 {
-    let mut instr = 0_32;
+    let mut instr = 0_u32;
     instr |= (opcode as u32) << 26;
     instr |= addr;
     instr

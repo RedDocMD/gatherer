@@ -1,3 +1,4 @@
+use colored::*;
 use error::Result as AssemblerResult;
 use instruction::Instruction;
 use regex::Regex;
@@ -19,13 +20,16 @@ extern crate lazy_static;
 fn main() {
     let args: Vec<_> = env::args().collect();
     if args.len() != 3 {
-        eprintln!("Usage: {} <input-file> <output-file>", args[0]);
+        eprintln!(
+            "{}",
+            format!("Usage: {} <input-file> <output-file>", args[0]).red()
+        );
         process::exit(1);
     } else {
         let parsed_asm = match parse_file(&args[1]) {
             Ok(v) => v,
             Err(e) => {
-                eprintln!("{}", e);
+                eprintln!("{}", e.to_string().red());
                 process::exit(1);
             }
         };
@@ -35,6 +39,10 @@ fn main() {
 struct ParsedAsm {
     instrs: Vec<Instruction>,
     labels: HashMap<String, usize>,
+}
+
+impl ParsedAsm {
+    fn assign_labels(&mut self) {}
 }
 
 fn parse_file<P: AsRef<Path>>(filename: P) -> AssemblerResult<ParsedAsm> {
