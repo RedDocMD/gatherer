@@ -105,7 +105,7 @@ fn encode_itype(opcode: u8, rs: u8, rt: u8, imm: u16) -> u32 {
     let mut instr = 0_u32;
     instr |= (opcode as u32) << 26;
     instr |= (rs as u32) << 21;
-    instr |= (rt as u32) << 15;
+    instr |= (rt as u32) << 16;
     instr |= imm as u32;
     instr
 }
@@ -442,5 +442,34 @@ mod test {
                 }
             }
         );
+    }
+
+    #[test]
+    fn test_encoding() {
+        let and_instr = Instruction::And { rs: 10, rt: 23 };
+        let and_instr_word = and_instr.encode();
+        assert!(and_instr_word.is_ok());
+        assert_eq!(and_instr_word.unwrap(), 0x11570000);
+        let add_instr = Instruction::AddImm { rs: 10, imm: 657 };
+        let add_instr_word = add_instr.encode();
+        assert!(add_instr_word.is_ok());
+        assert_eq!(add_instr_word.unwrap(), 0x09400291);
+        let lw_instr = Instruction::Lw {
+            rs: 10,
+            rt: 15,
+            imm: 657,
+        };
+        let lw_instr_word = lw_instr.encode();
+        assert!(lw_instr_word.is_ok());
+        assert_eq!(lw_instr_word.unwrap(), 0x314F0291);
+        let b_instr = Instruction::B {
+            label: AbsLabel {
+                name: String::from("L0"),
+                addr: Some(0xA7FFF),
+            },
+        };
+        let b_instr_word = b_instr.encode();
+        assert!(b_instr_word.is_ok());
+        assert_eq!(b_instr_word.unwrap(), 0x380A7FFF);
     }
 }
