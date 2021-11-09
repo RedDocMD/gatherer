@@ -174,6 +174,20 @@ impl Instruction {
             }
         }
     }
+
+    pub fn get_label_name(&self) -> &String {
+        use Instruction::*;
+        match self {
+            Bcy { label, .. }
+            | Bncy { label, .. }
+            | Bltz { label, .. }
+            | Bz { label, .. }
+            | Bnz { label, .. } => &label.name,
+
+            B { label } | Bl { label } => &label.name,
+            _ => unreachable!("didn't expect to get label of {}", self.opname()),
+        }
+    }
 }
 
 fn encode_itype(opcode: u8, rs: u8, rt: u8, imm: u16) -> u32 {
