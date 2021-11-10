@@ -1,5 +1,6 @@
 // This code just keeps on adding
-	addi $t0, 0
+	addi $t0, 1000
 Loop:
-	addi $t0, 10
+	compi $t1, 10
+	add $t0, $t1
 	b Loop
