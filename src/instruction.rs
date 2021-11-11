@@ -1,5 +1,5 @@
 use colored::*;
-use num_traits::Num;
+use num_traits::{AsPrimitive, Num};
 use regex::Regex;
 
 use crate::error::{AssemblerError, Result as AssemblerResult};
@@ -316,17 +316,21 @@ fn parse_two_registers(rest: &str) -> AssemblerResult<(u8, u8)> {
     Ok((regs[0], regs[1]))
 }
 
-fn parse_register_and_value<T: Num>(rest: &str) -> AssemblerResult<(u8, T)> {
+fn parse_register_and_value<T: Num + AsPrimitive<i32>>(rest: &str) -> AssemblerResult<(u8, T)>
+where
+    i32: AsPrimitive<T>,
+{
     let things_str: Vec<_> = rest.split(',').map(|x| x.trim()).collect();
     if things_str.len() != 2 {
         return Err(AssemblerError::InvalidNoOfArgs(2, things_str.len()));
     }
     let reg = register_from_str(things_str[0])
         .ok_or_else(|| AssemblerError::UnknownRegister(String::from(things_str[0])))?;
-    let (radix, num_str) = parse_radix(things_str[1]);
+    let (sign, num_str) = parse_sign(things_str[1]);
+    let (radix, num_str) = parse_radix(num_str);
     let val = T::from_str_radix(num_str, radix)
         .map_err(|_| AssemblerError::InvalidNumber(String::from(num_str)))?;
-    Ok((reg, val))
+    Ok((reg, sign.to_sign(val)))
 }
 
 fn parse_radix(num: &str) -> (u32, &str) {
@@ -342,6 +346,36 @@ fn parse_radix(num: &str) -> (u32, &str) {
     }
 }
 
+enum Sign {
+    Positive,
+    Negative,
+}
+
+impl Sign {
+    fn to_sign<T: AsPrimitive<i32>>(&self, val: T) -> T
+    where
+        i32: AsPrimitive<T>,
+    {
+        let signed_val: i32 = val.as_();
+        let after_sign = match self {
+            Sign::Positive => signed_val,
+            Sign::Negative => -signed_val,
+        };
+        after_sign.as_()
+    }
+}
+
+fn parse_sign(num: &str) -> (Sign, &str) {
+    let num_bytes = num.as_bytes();
+    if num_bytes[0] == b'+' {
+        (Sign::Positive, &num[1..])
+    } else if num_bytes[0] == b'-' {
+        (Sign::Negative, &num[1..])
+    } else {
+        (Sign::Positive, num)
+    }
+}
+
 fn parse_mem_access(rest: &str) -> AssemblerResult<(u8, u16, u8)> {
     lazy_static! {
         static ref RE: Regex =
@@ -352,12 +386,13 @@ fn parse_mem_access(rest: &str) -> AssemblerResult<(u8, u16, u8)> {
         .ok_or_else(|| AssemblerError::InvalidInstruction(String::from(rest)))?;
     let rt = register_from_str(&caps[1])
         .ok_or_else(|| AssemblerError::UnknownRegister(String::from(&caps[1])))?;
-    let (radix, num_str) = parse_radix(&caps[2]);
+    let (sign, num_str) = parse_sign(&caps[2]);
+    let (radix, num_str) = parse_radix(num_str);
     let imm = u16::from_str_radix(num_str, radix)
         .map_err(|_| AssemblerError::InvalidNumber(String::from(num_str)))?;
     let rs = register_from_str(&caps[3])
         .ok_or_else(|| AssemblerError::UnknownRegister(String::from(&caps[3])))?;
-    Ok((rt, imm, rs))
+    Ok((rt, sign.to_sign(imm), rs))
 }
 
 fn parse_reg_label(rest: &str) -> AssemblerResult<(u8, RelLabel)> {
@@ -467,6 +502,20 @@ mod test {
         assert_eq!(
             parsed_instr.unwrap(),
             Instruction::CompImm { rs: 10, imm: 32 }
+        );
+    }
+
+    #[test]
+    fn test_neg_imm() {
+        let instr = "addi $t2, -0x10";
+        let parsed_instr = Instruction::try_from(instr);
+        assert!(parsed_instr.is_ok());
+        assert_eq!(
+            parsed_instr.unwrap(),
+            Instruction::AddImm {
+                rs: 10,
+                imm: 0xFFF0
+            }
         );
     }
 
