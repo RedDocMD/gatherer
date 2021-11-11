@@ -129,18 +129,15 @@ impl Instruction {
 
     pub fn has_abs_label(&self) -> bool {
         use Instruction::*;
-        match self {
-            B { .. } | Bl { .. } => true,
-            _ => false,
-        }
+        matches!(self, B { .. } | Bl { .. })
     }
 
     pub fn has_rel_label(&self) -> bool {
         use Instruction::*;
-        match self {
-            Bcy { .. } | Bncy { .. } | Bltz { .. } | Bz { .. } | Bnz { .. } => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Bcy { .. } | Bncy { .. } | Bltz { .. } | Bz { .. } | Bnz { .. }
+        )
     }
 
     pub fn set_abs_addr(&mut self, addr: u32) {

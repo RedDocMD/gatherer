@@ -102,7 +102,7 @@ fn parse_file<P: AsRef<Path>>(filename: P) -> AssemblerResult<ParsedAsm> {
         }
         match detect_label(line) {
             Some(label) => {
-                labels.insert(String::from(label), instrs.len());
+                labels.insert(label, instrs.len());
             }
             None => instrs.push(Instruction::try_from(line)?),
         }
@@ -114,8 +114,5 @@ fn detect_label(line: &str) -> Option<String> {
     lazy_static! {
         static ref LABEL_RE: Regex = Regex::new(r"([a-zA-Z0-9_]+):").unwrap();
     }
-    match LABEL_RE.captures(line) {
-        Some(caps) => Some(String::from(&caps[1])),
-        None => None,
-    }
+    LABEL_RE.captures(line).map(|caps| String::from(&caps[1]))
 }
