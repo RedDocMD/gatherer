@@ -313,8 +313,9 @@ fn parse_two_registers(rest: &str) -> AssemblerResult<(u8, u8)> {
     Ok((regs[0], regs[1]))
 }
 
-fn parse_register_and_value<T: Num + AsPrimitive<i32>>(rest: &str) -> AssemblerResult<(u8, T)>
+fn parse_register_and_value<T>(rest: &str) -> AssemblerResult<(u8, T)>
 where
+    T: Num + AsPrimitive<i32>,
     i32: AsPrimitive<T>,
 {
     let things_str: Vec<_> = rest.split(',').map(|x| x.trim()).collect();
@@ -349,8 +350,9 @@ enum Sign {
 }
 
 impl Sign {
-    fn to_sign<T: AsPrimitive<i32>>(&self, val: T) -> T
+    fn to_sign<T>(&self, val: T) -> T
     where
+        T: AsPrimitive<i32>,
         i32: AsPrimitive<T>,
     {
         let signed_val: i32 = val.as_();
