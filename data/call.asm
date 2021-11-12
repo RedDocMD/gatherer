@@ -9,3 +9,4 @@ quadruple:
 	sll $t0, 2
 	xor $v0, $v0
 	add $v0, $t0
+	br $ra
