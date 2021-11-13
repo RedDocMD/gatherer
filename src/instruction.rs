@@ -188,7 +188,8 @@ impl Instruction {
 
     pub fn from_str(instr: &str) -> AssemblerResult<Vec<Self>> {
         let mut instrs = Vec::new();
-        let (comm, rest) = extract_command(instr).ok_or(AssemblerError::OpcodeMissing)?;
+        let (comm, rest) = extract_command(instr)
+            .ok_or_else(|| AssemblerError::OpcodeMissing(String::from(instr)))?;
         match comm {
             "push" => {
                 let reg = register_from_str(rest)
@@ -246,7 +247,8 @@ impl TryFrom<&str> for Instruction {
     type Error = AssemblerError;
 
     fn try_from(instr: &str) -> Result<Self, Self::Error> {
-        let (comm, rest) = extract_command(instr).ok_or(AssemblerError::OpcodeMissing)?;
+        let (comm, rest) = extract_command(instr)
+            .ok_or_else(|| AssemblerError::OpcodeMissing(String::from(instr)))?;
         match comm {
             "add" => {
                 let (rs, rt) = parse_two_registers(rest)?;

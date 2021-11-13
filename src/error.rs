@@ -3,8 +3,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AssemblerError {
-    #[error("opcode missing")]
-    OpcodeMissing,
+    #[error("opcode missing: `{0}`")]
+    OpcodeMissing(String),
     #[error("unknown instruction `{0}`")]
     UnknownInstruction(String),
     #[error("invalid no. of args, expected `{0}`, found `{1}`")]
