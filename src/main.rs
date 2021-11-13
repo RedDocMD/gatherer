@@ -104,7 +104,7 @@ fn parse_file<P: AsRef<Path>>(filename: P) -> AssemblerResult<ParsedAsm> {
             Some(label) => {
                 labels.insert(label, instrs.len());
             }
-            None => instrs.push(Instruction::try_from(line)?),
+            None => instrs.extend(Instruction::from_str(line)?),
         }
     }
     Ok(ParsedAsm { instrs, labels })

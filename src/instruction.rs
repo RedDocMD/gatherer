@@ -185,6 +185,40 @@ impl Instruction {
             _ => unreachable!("didn't expect to get label of {}", self.opname()),
         }
     }
+
+    pub fn from_str(instr: &str) -> AssemblerResult<Vec<Self>> {
+        let mut instrs = Vec::new();
+        let (comm, rest) = extract_command(instr).ok_or(AssemblerError::OpcodeMissing)?;
+        match comm {
+            "push" => {
+                let reg = register_from_str(rest)
+                    .ok_or_else(|| AssemblerError::UnknownRegister(String::from(rest)))?;
+                let sp = register_from_str("$sp").unwrap();
+                instrs.push(Instruction::Sw {
+                    rt: reg,
+                    rs: sp,
+                    imm: 0,
+                });
+                instrs.push(Instruction::AddImm {
+                    rs: sp,
+                    imm: (-4_i16 as u16),
+                });
+            }
+            "pop" => {
+                let reg = register_from_str(rest)
+                    .ok_or_else(|| AssemblerError::UnknownRegister(String::from(rest)))?;
+                let sp = register_from_str("$sp").unwrap();
+                instrs.push(Instruction::AddImm { rs: sp, imm: 4 });
+                instrs.push(Instruction::Lw {
+                    rt: reg,
+                    rs: sp,
+                    imm: 0,
+                });
+            }
+            _ => instrs.push(Instruction::try_from(instr)?),
+        }
+        Ok(instrs)
+    }
 }
 
 fn encode_itype(opcode: u8, rs: u8, rt: u8, imm: u16) -> u32 {
