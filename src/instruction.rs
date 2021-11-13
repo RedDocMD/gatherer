@@ -215,6 +215,11 @@ impl Instruction {
                     imm: 0,
                 });
             }
+            "mov" => {
+                let (dest, src) = parse_two_registers(rest)?;
+                instrs.push(Instruction::Xor { rs: dest, rt: dest });
+                instrs.push(Instruction::Add { rs: dest, rt: src });
+            }
             _ => instrs.push(Instruction::try_from(instr)?),
         }
         Ok(instrs)
